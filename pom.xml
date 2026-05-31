@@ -1,0 +1,9 @@
+﻿<!--
+POM base para banquito-switch-billing-service
+
+groupId: com.banquito
+artifactId: switch.billing-service
+package base: com.banquito.switchpagos.billing
+
+Codex deberá completar este archivo con Spring Boot, Java 21 y las dependencias necesarias.
+-->
