@@ -13,7 +13,8 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Copiamos el .jar generado en el stage anterior
+
+# Copiamos el .jar generado en el stage anterior a la imagen final
 COPY --from=build /app/target/*.jar app.jar
 
 # Exponemos el puerto por defecto de Spring Boot (puedes cambiarlo si usas otro)
