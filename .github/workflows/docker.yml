@@ -24,11 +24,11 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/banquito-sw-enrutamiento:latest -f docker/Dockerfile .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/banquito-sw-facturacion:latest -f docker/Dockerfile .
 
       - name: Push image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/banquito-sw-enrutamiento:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/banquito-sw-facturacion:latest
 
       - name: Trigger Infra Deploy
         run: |
@@ -39,6 +39,6 @@ jobs:
             -d '{
               "event_type": "deploy-switch-back",
               "client_payload": {
-                "service": "banquito-sw-enrutamiento"
+                "service": "banquito-sw-facturacion"
               }
             }'
