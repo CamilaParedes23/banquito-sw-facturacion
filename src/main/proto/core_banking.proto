@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package banquito.corebanking.v1;
+
+option java_multiple_files = true;
+option java_package = "com.banquito.switchpagos.billing.grpc.core";
+option java_outer_classname = "CoreBankingProto";
+
+service CoreBankingService {
+  rpc ReleaseFunding(CoreFundingReleaseRequest) returns (CoreFundingReleaseResponse);
+  rpc RequestCommissionCharge(CoreCommissionChargeRequest) returns (CoreCommissionChargeResponse);
+}
+
+message CoreFundingReleaseRequest {
+  string batch_id = 1;
+  string core_funding_id = 2;
+  string remaining_amount = 3;
+  string currency = 4;
+  string reason = 5;
+  string idempotency_key = 6;
+}
+
+message CoreFundingReleaseResponse {
+  string batch_id = 1;
+  string core_funding_id = 2;
+  string status = 3;
+  string released_amount = 4;
+  string core_transaction_id = 5;
+  string message = 6;
+}
+
+message CoreCommissionChargeRequest {
+  string batch_id = 1;
+  string company_ruc = 2;
+  string source_account_number = 3;
+  int32 billable_lines = 4;
+  string commission_subtotal = 5;
+  string currency = 6;
+  string concept = 7;
+  string idempotency_key = 8;
+}
+
+message CoreCommissionChargeResponse {
+  string batch_id = 1;
+  string status = 2;
+  string core_commission_charge_id = 3;
+  string commission_subtotal = 4;
+  string tax_amount = 5;
+  string total_charged_amount = 6;
+  string core_transaction_id = 7;
+  string message = 8;
+}
