@@ -1,12 +1,12 @@
-package com.banquito.switchpagos.routing;
+package com.banquito.switchpagos.billing;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SwitchRoutingServiceApplication {
+public class BillingServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SwitchRoutingServiceApplication.class, args);
+        SpringApplication.run(BillingServiceApplication.class, args);
     }
 }
