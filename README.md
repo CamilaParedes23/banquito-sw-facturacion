@@ -69,12 +69,11 @@ Puerto por defecto: `8084`. Solo se usa para actuator/health.
 - `CORE_KONG_CLIENT_TOKEN_ENABLED`
 - `CORE_KONG_CLIENT_ID`
 - `CORE_KONG_CLIENT_SECRET`
-- `CORE_KONG_REQUIRED_SCOPE`
+- `CORE_KONG_SERVICE_FEE_REQUIRED_SCOPE`
 - `CORE_KONG_CLIENT_TOKEN_PATH`
 - `CORE_KONG_CLIENT_TOKEN_REFRESH_SKEW_SECONDS`
 - `CORE_KONG_CONNECT_TIMEOUT_MS`
 - `CORE_KONG_READ_TIMEOUT_MS`
-- `CORE_SWITCH_DEFAULT_ACCOUNTING_DATE`
 
 Los fallback de empresa/cuenta solo cubren mensajes legacy sin esos campos. No existe fallback para `coreFundingId`; su valor debe contener el `reservationUuid` real de Core.
 
@@ -120,12 +119,11 @@ POST /api/v1/switch-core/payment-reservations/{reservationUuid}/service-fee-char
 Mapeo:
 
 - `coreFundingId` legacy se usa como `{reservationUuid}`.
-- `commissionSubtotal` se envia como `amount`.
+- `commissionSubtotal` se envia como subtotal sin IVA.
 - `correlationId` se envia desde el evento.
 - `externalReference` usa `COMMISSION-{batchId}`.
-- `accountingDate` usa `CORE_SWITCH_DEFAULT_ACCOUNTING_DATE`; si esta vacia, usa la fecha local del servicio.
 
-Core calcula IVA y contabilidad internamente, pero el `ReservationResponse` actual no devuelve IVA, total cobrado ni `transactionUuid` de comision. Por eso `taxAmount`, `totalChargedAmount`, `coreTransactionId` y `coreCommissionChargeId` pueden quedar `null`.
+Core calcula IVA y contabilidad internamente. El servicio lee tanto los campos actuales (`chargedCommissionTaxAmount`, `chargedCommissionTotalAmount`, `feeTransactionUuid`, `feeJournalEntryUuid`) como los nombres legacy (`taxAmount`, `totalChargedAmount`) si Core los devuelve.
 
 Estados Core considerados exitosos para el cobro:
 
@@ -184,7 +182,7 @@ Para probar contra Core real por Kong, configurar:
 ```powershell
 $env:CORE_KONG_BASE_URL="http://localhost:8000"
 $env:CORE_KONG_CLIENT_SECRET="<secret-tecnico>"
-$env:CORE_SWITCH_DEFAULT_ACCOUNTING_DATE="2026-06-05"
+$env:CORE_KONG_SERVICE_FEE_REQUIRED_SCOPE="core.reserve.fee"
 ```
 
 Si el servicio corre dentro de Docker Compose junto al stack Core, usar la red externa compartida `banquito-net` y configurar `CORE_KONG_BASE_URL=http://kong-gateway:8000`. `host.docker.internal:8000` queda solo como alternativa local si no se usa la red compartida.
@@ -193,7 +191,7 @@ Si el servicio corre dentro de Docker Compose junto al stack Core, usar la red e
 
 Validacion ejecutada contra Kong/Core real usando token inyectado en `CORE_KONG_AUTH_TOKEN`. Desde la fase de token automatico, `CORE_KONG_AUTH_TOKEN` queda como override manual y el camino normal usa `client-token` cacheado.
 
-- Token tecnico obtenido por `POST /api/v1/auth/client-token` con cliente demo `switch-pagos-internos-service` y scope solicitado `core.reserve.consume`. En los seeds revisados no existe scope especifico para comision; el JWT emitido incluyo `core.reserve.consume`, `core.reserve.create` y `core.reserve.release`.
+- Token tecnico obtenido por `POST /api/v1/auth/client-token` con cliente demo `switch-pagos-internos-service` y scope solicitado `core.reserve.fee`.
 - Lote `6b5ed5e6-dd9f-4957-8e81-7f64affd88a3`, reserva `bd057bec-abe1-4976-890e-2a7c5c32b50a`, llego a Core por `service-fee-charge` y Core respondio `HTTP 200`, pero el servicio lo marco fallido porque aun no interpretaba `CONSUMIDA_TOTAL` como exito.
 - Evidencia historica previa al tarifario por tramos: el lote `b60f3d73-e773-403d-a9c0-94abdb3621bf`, reserva `475f8323-df27-4df8-ad49-6735e2a37698`, una linea cobrable y `commissionSubtotal=0.40` recibio `HTTP 200` de Core con estado `CONSUMIDA_TOTAL`.
 - Evidencia vigente con tarifario por tramos: el lote `82130617-641e-463c-9378-9b6b10fdc071`, una linea cobrable, genero `unitFee=0.50` y `commissionSubtotal=0.50`; el lote `c0d9357d-278b-4193-a6f8-1effec30ca9c`, once lineas cobrables, genero `unitFee=0.40` y `commissionSubtotal=4.40`.

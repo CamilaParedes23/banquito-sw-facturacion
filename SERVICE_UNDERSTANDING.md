@@ -82,9 +82,9 @@ Consume Core Bancario por REST via Kong usando:
 POST /api/v1/switch-core/payment-reservations/{reservationUuid}/service-fee-charge
 ```
 
-`coreFundingId` es un nombre legacy/transicional y su valor se usa como `reservationUuid`. El request envia `amount=commissionSubtotal`, `correlationId`, `accountingDate` y `externalReference=COMMISSION-{batchId}`.
+`coreFundingId` es un nombre legacy/transicional y su valor se usa como `reservationUuid`. El request envia `commissionSubtotal`, `correlationId` y `externalReference=COMMISSION-{batchId}`.
 
-Core no devuelve actualmente IVA, total cobrado ni `transactionUuid` de comision en `ReservationResponse`; esos campos quedan `null` hasta que el contrato se amplie.
+Core calcula IVA y total cobrado. El servicio lee `chargedCommissionTaxAmount`, `chargedCommissionTotalAmount`, `feeTransactionUuid` y `feeJournalEntryUuid`, con fallback a nombres legacy si Core los devuelve.
 
 ## Que cosas NO hace
 

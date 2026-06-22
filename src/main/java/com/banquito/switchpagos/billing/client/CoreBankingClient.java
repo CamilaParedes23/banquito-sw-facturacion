@@ -16,7 +16,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 
 @Component
 public class CoreBankingClient {
@@ -27,19 +27,18 @@ public class CoreBankingClient {
     private final String switchCorePath;
     private final String paymentReservationsPath;
     private final CoreKongTokenProvider tokenProvider;
-    private final String defaultAccountingDate;
 
     public CoreBankingClient(
             @Qualifier("coreKongRestClient") RestClient coreKongRestClient,
             @Value("${core.kong.switch-core-path}") String switchCorePath,
             @Value("${core.kong.payment-reservations-path}") String paymentReservationsPath,
-            CoreKongTokenProvider tokenProvider,
-            @Value("${core.switch.default-accounting-date}") String defaultAccountingDate) {
+            CoreKongTokenProvider tokenProvider) {
         this.coreKongRestClient = coreKongRestClient;
         this.switchCorePath = switchCorePath;
         this.paymentReservationsPath = paymentReservationsPath;
         this.tokenProvider = tokenProvider;
-        this.defaultAccountingDate = defaultAccountingDate;
+        LOGGER.info(
+                "Billing Core R9I fee contract activo: payload=commissionSubtotal-only, responseFields=chargedCommission*, feeTransactionUuid, feeJournalEntryUuid");
     }
 
     public CoreCommissionChargeResponse requestCommissionCharge(CoreCommissionChargeRequest request) {
@@ -73,8 +72,7 @@ public class CoreBankingClient {
 
     private CoreServiceFeeChargeRequest toCoreRequest(CoreCommissionChargeRequest request) {
         CoreServiceFeeChargeRequest coreRequest = new CoreServiceFeeChargeRequest();
-        coreRequest.setAmount(request.getCommissionSubtotal());
-        coreRequest.setAccountingDate(resolveAccountingDate());
+        coreRequest.setCommissionSubtotal(request.getCommissionSubtotal());
         coreRequest.setCorrelationId(request.getCorrelationId());
         coreRequest.setExternalReference(request.getIdempotencyKey());
         return coreRequest;
@@ -86,14 +84,39 @@ public class CoreBankingClient {
         CoreCommissionChargeResponse response = new CoreCommissionChargeResponse();
         response.setBatchId(request.getBatchId());
         response.setStatus(coreResponse == null ? null : coreResponse.status());
-        response.setCoreCommissionChargeId(null);
-        response.setCommissionSubtotal(request.getCommissionSubtotal());
-        // Leer IVA y total de la respuesta del Core
-        response.setTaxAmount(coreResponse == null ? null : coreResponse.taxAmount());
-        response.setTotalChargedAmount(coreResponse == null ? null : coreResponse.totalChargedAmount());
-        response.setCoreTransactionId(null);
+        response.setCoreCommissionChargeId(coreResponse == null ? null : coreResponse.feeTransactionUuid());
+        response.setCommissionSubtotal(resolveCommissionSubtotal(request, coreResponse));
+        response.setTaxAmount(coreResponse == null ? null
+                : firstNonNull(coreResponse.chargedCommissionTaxAmount(), coreResponse.taxAmount()));
+        response.setTotalChargedAmount(coreResponse == null ? null
+                : firstNonNull(coreResponse.chargedCommissionTotalAmount(), coreResponse.totalChargedAmount()));
+        response.setCoreTransactionId(coreResponse == null ? null : coreResponse.feeJournalEntryUuid());
         response.setMessage(coreResponse == null ? "Core response null" : "Cobro de comisión procesado por Core");
+        LOGGER.info(
+                "Core service-fee-charge procesado. batchId={}, status={}, commissionSubtotal={}, taxAmount={}, totalChargedAmount={}, feeTransactionUuidPresent={}, feeJournalEntryUuidPresent={}",
+                request.getBatchId(),
+                response.getStatus(),
+                response.getCommissionSubtotal(),
+                response.getTaxAmount(),
+                response.getTotalChargedAmount(),
+                response.getCoreCommissionChargeId() != null,
+                response.getCoreTransactionId() != null);
         return response;
+    }
+
+    private BigDecimal resolveCommissionSubtotal(
+            CoreCommissionChargeRequest request,
+            CoreReservationResponse coreResponse) {
+        if (coreResponse == null) {
+            return request.getCommissionSubtotal();
+        }
+        return firstNonNull(
+                firstNonNull(coreResponse.commissionSubtotal(), coreResponse.chargedCommissionSubtotal()),
+                request.getCommissionSubtotal());
+    }
+
+    private BigDecimal firstNonNull(BigDecimal preferred, BigDecimal fallback) {
+        return preferred != null ? preferred : fallback;
     }
 
     private void validateCommissionRequest(CoreCommissionChargeRequest request) {
@@ -138,17 +161,6 @@ public class CoreBankingClient {
 
     private void applyAuthorization(HttpHeaders headers) {
         headers.setBearerAuth(tokenProvider.getBearerToken());
-    }
-
-    private LocalDate resolveAccountingDate() {
-        if (defaultAccountingDate != null && !defaultAccountingDate.isBlank()) {
-            try {
-                return LocalDate.parse(defaultAccountingDate);
-            } catch (RuntimeException exception) {
-                LOGGER.warn("CORE_SWITCH_DEFAULT_ACCOUNTING_DATE invalida. Se usa fecha local actual.");
-            }
-        }
-        return LocalDate.now();
     }
 
     private Boolean isFunctionalRejection(Integer httpStatus) {

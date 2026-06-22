@@ -1,30 +1,20 @@
 package com.banquito.switchpagos.billing.dto.request;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.UUID;
 
 public class CoreServiceFeeChargeRequest {
 
-    private BigDecimal amount;
-    private LocalDate accountingDate;
+    private BigDecimal commissionSubtotal;
     private UUID correlationId;
     private String externalReference;
 
-    public BigDecimal getAmount() {
-        return amount;
+    public BigDecimal getCommissionSubtotal() {
+        return commissionSubtotal;
     }
 
-    public void setAmount(BigDecimal amount) {
-        this.amount = amount;
-    }
-
-    public LocalDate getAccountingDate() {
-        return accountingDate;
-    }
-
-    public void setAccountingDate(LocalDate accountingDate) {
-        this.accountingDate = accountingDate;
+    public void setCommissionSubtotal(BigDecimal commissionSubtotal) {
+        this.commissionSubtotal = commissionSubtotal;
     }
 
     public UUID getCorrelationId() {
